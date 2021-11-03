@@ -17,6 +17,9 @@ package org.springframework.samples.petclinic.api;
 
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.timelimiter.TimeLimiterConfig;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.resolver.DefaultAddressResolverGroup;
+import reactor.netty.http.client.HttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -29,6 +32,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.server.RequestPredicates;
@@ -59,7 +63,14 @@ public class ApiGatewayApplication {
     @Bean
     @LoadBalanced
     public WebClient.Builder loadBalancedWebClientBuilder() {
-        return WebClient.builder();
+        HttpClient httpClient = HttpClient.create()
+            .resolver(DefaultAddressResolverGroup.INSTANCE)
+            .responseTimeout(Duration.ofSeconds(600))
+            .doOnConnected(conn -> conn.addHandlerLast(new ReadTimeoutHandler(300)));
+
+        return WebClient
+            .builder()
+            .clientConnector(new ReactorClientHttpConnector(httpClient));
     }
 
     @Value("classpath:/static/index.html")
@@ -84,7 +95,7 @@ public class ApiGatewayApplication {
     public Customizer<ReactiveResilience4JCircuitBreakerFactory> defaultCustomizer() {
         return factory -> factory.configureDefault(id -> new Resilience4JConfigBuilder(id)
             .circuitBreakerConfig(CircuitBreakerConfig.ofDefaults())
-            .timeLimiterConfig(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(4)).build())
+            .timeLimiterConfig(TimeLimiterConfig.custom().timeoutDuration(Duration.ofSeconds(600)).build())
             .build());
     }
 }
