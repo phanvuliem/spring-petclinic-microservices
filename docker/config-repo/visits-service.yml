@@ -12,6 +12,10 @@ spring:
       on-profile: docker
   zipkin:
     baseUrl: http://tracing-server:9411
+    sender:
+      type: rabbit
+  rabbitmq:
+    host: rabbitmq
 server:
   port: 8082
 eureka:

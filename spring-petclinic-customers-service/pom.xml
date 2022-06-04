@@ -58,6 +58,12 @@
             <artifactId>spring-cloud-sleuth-zipkin</artifactId>
         </dependency>
 
+        <!-- RabbitMQ -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- Third parties -->
         <dependency>
             <groupId>mysql</groupId>
@@ -103,7 +109,17 @@
             <artifactId>assertj-core</artifactId>
             <scope>test</scope>
         </dependency>
-	</dependencies>
+        <dependency>
+            <groupId>org.springframework.amqp</groupId>
+            <artifactId>spring-rabbit-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>net.bull.javamelody</groupId>
+            <artifactId>javamelody-spring-boot-starter</artifactId>
+        </dependency>
+    </dependencies>
 
     <profiles>
         <profile>

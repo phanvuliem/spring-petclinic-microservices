@@ -62,7 +62,7 @@ management:
 spring:
   config:
     activate:
-      on-profile: chaos-monkey      
+      on-profile: chaos-monkey
 management.endpoint.chaosmonkey.enabled: true
 chaos:
   monkey:
@@ -82,7 +82,7 @@ spring:
   datasource:
     schema: classpath*:db/mysql/schema.sql
     data: classpath*:db/mysql/data.sql
-    url: jdbc:mysql://localhost:3306/petclinic?allowPublicKeyRetrieval=true&useSSL=false
+    url: jdbc:mysql://mysql:3306/petclinic?allowPublicKeyRetrieval=true&useSSL=false
     username: petclinic
     password: petclinic
     initialization-mode: never

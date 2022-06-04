@@ -23,7 +23,10 @@ import io.micrometer.core.annotation.Timed;
 import lombok.RequiredArgsConstructor;
 import lombok.Value;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.http.HttpStatus;
+import org.springframework.samples.petclinic.visits.RabbitMqConfig;
 import org.springframework.samples.petclinic.visits.model.Visit;
 import org.springframework.samples.petclinic.visits.model.VisitRepository;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -49,6 +52,7 @@ import org.springframework.web.bind.annotation.RestController;
 class VisitResource {
 
     private final VisitRepository visitRepository;
+    private final RabbitTemplate rabbitTemplate;
 
     @PostMapping("owners/*/pets/{petId}/visits")
     @ResponseStatus(HttpStatus.CREATED)
@@ -58,7 +62,14 @@ class VisitResource {
 
         visit.setPetId(petId);
         log.info("Saving visit {}", visit);
-        return visitRepository.save(visit);
+        Visit result = visitRepository.save(visit);
+
+        MDC.put(RabbitMqConfig.PET_ID_CTX, String.valueOf(petId));
+        rabbitTemplate.convertAndSend(RabbitMqConfig.TOPIC_EXCHANGE_NAME, RabbitMqConfig.ROUTING_KEY_PREFIX + petId,
+            String.format("Recorded a visit on %s for pet with ID %s", visit.getDate(), petId));
+        MDC.remove(RabbitMqConfig.PET_ID_CTX);
+
+        return result;
     }
 
     @GetMapping("owners/*/pets/{petId}/visits")

@@ -4,6 +4,7 @@ services:
   config-server:
     image: springcommunity/spring-petclinic-config-server
     container_name: config-server
+    hostname: config-server
     deploy:
       resources:
         limits:
@@ -14,11 +15,17 @@ services:
       timeout: 3s
       retries: 60
     ports:
-     - 8888:8888
+     - 18888:8888
+    volumes:
+      - /mnt/c/Projects/learning/java/spring-petclinic-microservices-cloud/docker/config-repo/:/opt/config/
+    environment:
+      - GIT_REPO=/opt/config
+      - SPRING_PROFILES_ACTIVE=native,mysql
 
   discovery-server:
     image: springcommunity/spring-petclinic-discovery-server
     container_name: discovery-server
+    hostname: discovery-server
     deploy:
       resources:
         limits:
@@ -27,11 +34,13 @@ services:
       - config-server
     entrypoint: ["./dockerize","-wait=tcp://config-server:8888","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-     - 8761:8761
+      - 18761:8761
+
 
   customers-service:
     image: springcommunity/spring-petclinic-customers-service
     container_name: customers-service
+    hostname: customers-service
     deploy:
       resources:
         limits:
@@ -42,11 +51,15 @@ services:
      - mysql
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-    - 8081:8081
+      - 8081:8081
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
+
 
   visits-service:
     image: springcommunity/spring-petclinic-visits-service
     container_name: visits-service
+    hostname: visits-service
     deploy:
       resources:
         limits:
@@ -57,11 +70,14 @@ services:
      - mysql
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-     - 8082:8082
+      - 8082:8082
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
 
   vets-service:
     image: springcommunity/spring-petclinic-vets-service
     container_name: vets-service
+    hostname: vets-service
     deploy:
       resources:
         limits:
@@ -72,11 +88,14 @@ services:
      - mysql
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-     - 8083:8083
+      - 8083:8083
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,mysql
 
   api-gateway:
     image: springcommunity/spring-petclinic-api-gateway
     container_name: api-gateway
+    hostname: api-gateway
     deploy:
       resources:
         limits:
@@ -87,23 +106,30 @@ services:
      - mysql
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-     - 8080:8080
+      - 18080:8080
 
   tracing-server:
     image: openzipkin/zipkin
     container_name: tracing-server
+    hostname: tracing-server
     deploy:
       resources:
         limits:
           memory: 512M
     environment:
-    - JAVA_OPTS=-XX:+UnlockExperimentalVMOptions -Djava.security.egd=file:/dev/./urandom
+      - JAVA_OPTS=-XX:+UnlockExperimentalVMOptions -Djava.security.egd=file:/dev/./urandom
     ports:
-     - 9411:9411
+      - 9411:9411
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9411" ]
+      interval: 1s
+      timeout: 3s
+      retries: 60
 
   admin-server:
     image: springcommunity/spring-petclinic-admin-server
     container_name: admin-server
+    hostname: admin-server
     deploy:
       resources:
         limits:
@@ -114,36 +140,38 @@ services:
      - mysql
     entrypoint: ["./dockerize","-wait=tcp://discovery-server:8761","-timeout=60s","--","java", "org.springframework.boot.loader.JarLauncher"]
     ports:
-     - 9090:9090
+      - 9090:9090
 
   ## Grafana / Prometheus
 
   grafana-server:
     build: ./docker/grafana
     container_name: grafana-server
+    hostname: grafana-server
     deploy:
       resources:
         limits:
           memory: 256M
     ports:
-    - 3000:3000
+      - 13000:3000
 
   prometheus-server:
     build: ./docker/prometheus
     container_name: prometheus-server
+    hostname: prometheus-server
     deploy:
       resources:
         limits:
           memory: 256M
     ports:
-    - 9091:9090
+      - 19091:9090
 
   ## MySQL DB
   mysql:
     image: mysql:8.0.23
     restart: always
     volumes:
-      - ./docker/database/:/var/lib/mysql/
+      - /mnt/C/Projects/learning/java/spring-petclinic-microservices-cloud/docker/database/:/var/lib/mysql/
     environment:
       - MYSQL_USER=petclinic
       - MYSQL_PASSWORD=petclinic
@@ -157,3 +185,32 @@ services:
     ports:
       - 3306:3306
     command: mysqld --lower_case_table_names=1 --skip-ssl --character_set_server=utf8mb4 --explicit_defaults_for_timestamp
+    hostname: mysql
+
+  rabbitmq:
+    image: rabbitmq:management-alpine
+    container_name: rabbitmq
+    hostname: rabbitmq
+    ports:
+      - 5672:5672
+      - 15672:15672
+    depends_on:
+      - mysql
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 30s
+      timeout: 30s
+      retries: 3
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    command: --tlsskipverify
+    ports:
+      - "9443:9443"
+    volumes:
+      - portainer_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+
+volumes:
+  portainer_data:
+    external: false
